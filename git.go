@@ -208,7 +208,7 @@ func DeleteRepository(repo string) error {
 }
 
 func GetLastCommitHash(repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits", os.Getenv("GITHUB_USER"), repo)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?per_page=1", os.Getenv("GITHUB_USER"), repo)
 	resp, err := HTTPGetClient(url, Headers())
 	if err != nil {
 		return "", err
@@ -223,24 +223,7 @@ func GetLastCommitHash(repo string) (string, error) {
 		return "", fmt.Errorf("no commits found")
 	}
 
-	latest := commits[0]
-	latestDate, err := time.Parse(time.RFC3339, latest.Commit.Author.Date)
-	if err != nil {
-		return "", fmt.Errorf("invalid date format: %w", err)
-	}
-
-	for _, c := range commits[1:] {
-		d, err := time.Parse(time.RFC3339, c.Commit.Author.Date)
-		if err != nil {
-			continue
-		}
-		if d.After(latestDate) {
-			latest = c
-			latestDate = d
-		}
-	}
-
-	return latest.SHA, nil
+	return commits[0].SHA, nil
 }
 
 func PagesBuildComplete(repo string, lastHash string) error {
@@ -348,6 +331,15 @@ func Round1(req UserRequest) error {
 		return err
 	}
 
+	if err := PagesBuildComplete(name, lastHash); err != nil {
+		log.Printf("Pages build did not complete: %v", err)
+	}
+
+	lastHash, err = GetLastCommitHash(name)
+	if err != nil {
+		return err
+	}
+
 	evalReq := EvaluatorRequest{
 		Email:     req.Email,
 		Task:      req.Task,
@@ -356,10 +348,6 @@ func Round1(req UserRequest) error {
 		RepoURL:   fmt.Sprintf("https://github.com/%s/%s", os.Getenv("GITHUB_USER"), name),
 		CommitSHA: lastHash,
 		PagesURL:  fmt.Sprintf("https://%s.github.io/%s/", os.Getenv("GITHUB_USER"), name),
-	}
-
-	if err := PagesBuildComplete(name, lastHash); err != nil {
-		log.Printf("Pages build did not complete: %v", err)
 	}
 
 	if err := SatisfyEvaluator(evalReq, req.EvaluationURL); err != nil {
@@ -449,6 +437,11 @@ func Round2(req UserRequest) error {
 	// Optional: wait for Pages build again
 	if err := PagesBuildComplete(name, lastHash); err != nil {
 		log.Printf("Pages build did not complete (round2): %v", err)
+	}
+
+	lastHash, err = GetLastCommitHash(name)
+	if err != nil {
+		return err
 	}
 
 	evalReq := EvaluatorRequest{

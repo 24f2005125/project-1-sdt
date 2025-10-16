@@ -169,5 +169,8 @@ func SatisfyEvaluator(req EvaluatorRequest, url string) error {
 		return err
 	}
 
+	jsonBytes, _ := json.Marshal(req)
+	fmt.Println("Sent evaluator request for task:", req.Task, "to", url, "with body:", string(jsonBytes))
+
 	return nil
 }
