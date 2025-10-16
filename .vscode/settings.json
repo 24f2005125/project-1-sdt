@@ -1,0 +1,9 @@
+{
+  "editor.detectIndentation": false,
+  "explorer.sortOrder": "filesFirst",
+  "explorer.confirmDelete": false,
+  "workbench.tree.indent": 18,
+  "window.title": "${rootName}",
+  "explorer.compactFolders": false,
+  "workbench.startupEditor": "none",
+}
